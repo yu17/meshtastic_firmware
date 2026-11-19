@@ -10,7 +10,8 @@
 #define I2C_SDA1 33 // handheld: BMP280 (0x76) and QMC5883L (0x0D)
 #define I2C_SCL1 34
 
-#define VEXT_ENABLE Vext // active low, powers the oled display and the lora antenna boost
+// VEXT_ENABLE is deliberately not defined: on this handheld the Vext rail (GPIO 36, active
+// low) feeds only the GPS, so it is handed to the GPS code as its power switch below.
 #define BUTTON_PIN 0
 
 #define ADC_CTRL 37
@@ -48,12 +49,10 @@
 #define GPS_RX_PIN 48
 #define GPS_TX_PIN 47
 
-// The GPS 3.3 V rail is fed from Vext (GPIO 36, active low). Left disabled: with these
-// two lines the firmware cuts Vext whenever the GPS sleeps, which also removes power from
-// anything else wired to Vext. Enable only once it is confirmed that the BMP280 and the
-// compass are NOT powered from Vext, and remove VEXT_ENABLE above at the same time.
-// #define PIN_GPS_EN Vext
-// #define GPS_EN_ACTIVE 0
+// GPS power switch: the module's 3.3 V rail is fed from Vext and nothing else is on it.
+// The firmware cuts it when the GPS is disabled and during long sleeps between fixes.
+#define PIN_GPS_EN 36 // Vext
+#define GPS_EN_ACTIVE 0
 
 // Analog joystick (driver: AnalogJoystick.cpp in this folder). Same pins and thresholds
 // as the old rocket-ctrl-handheld firmware.
