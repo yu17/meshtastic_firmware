@@ -10,7 +10,8 @@
 #define I2C_SDA1 33 // vehicle node: QMC5883L (0x0D) inside the GPS module
 #define I2C_SCL1 34
 
-#define VEXT_ENABLE Vext // active low, powers the oled display and the lora antenna boost
+// VEXT_ENABLE is deliberately not defined: on this node the Vext rail (GPIO 36, active low)
+// feeds only the GPS module, so it is handed to the GPS code as its power switch below.
 #define BUTTON_PIN 0
 
 #define ADC_CTRL 37
@@ -44,12 +45,17 @@
 #define HAS_32768HZ 1
 
 // ---- Vehicle node additions ----
-// MicoAir MG-902 (u-blox M9) on UART1. The module runs from the 5 V pin, so there is no
-// GPS power switch here and Vext keeps its stock role.
+// MicoAir MG-902 (u-blox M9) on UART1
 #define GPS_RX_PIN 48
 #define GPS_TX_PIN 47
 
+// GPS power switch: the module is fed from Vext and nothing else is on that rail.
+// The firmware cuts it when the GPS is disabled and during long sleeps between fixes.
+#define PIN_GPS_EN 36 // Vext
+#define GPS_EN_ACTIVE 0
+
 // QMC5883L compass (driver: ../heltec_v3_fishy_common/QMC5883LHeading.cpp), on the secondary I2C bus.
+#define COMPASS_GPS_COURSE_WITHOUT_MAG 1 // vehicle: use GPS course even without a magnetometer heading
 // #define QMC5883L_HEADING_OFFSET_DEG 90.0f // mounting offset
 // #define QMC5883L_HEADING_REVERSED 1       // if the heading turns the wrong way
 // #define QMC5883L_DEBUG                    // log raw readings once a second

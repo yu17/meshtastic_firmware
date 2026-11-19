@@ -32,6 +32,7 @@ class QMC5883LHeading : public concurrency::OSThread
     void saveCalibrationIfDue(uint32_t now);
     bool calibrated() const;
     bool gpsCourseUsable(uint32_t now, float &courseDeg);
+    void feedGpsCourseOnly(uint32_t now);
 
     TwoWire &bus;
     bool present = false;

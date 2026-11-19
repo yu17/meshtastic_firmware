@@ -42,6 +42,10 @@
 // intervals the receiver sleeps between fixes and the magnetometer is the better source.
 // A fix counts as fresh for one interval plus this margin, so the source does not flip
 // back to the magnetometer between two consecutive fixes.
+// Set to 1 in variant.h to show GPS course even when the magnetometer gives no heading
+#ifndef COMPASS_GPS_COURSE_WITHOUT_MAG
+#define COMPASS_GPS_COURSE_WITHOUT_MAG 0
+#endif
 #ifndef COMPASS_GPS_AGE_MARGIN_MS
 #define COMPASS_GPS_AGE_MARGIN_MS 4000
 #endif
@@ -57,6 +61,7 @@ static constexpr uint8_t MODE_STANDBY = 0x00;
 
 static constexpr uint32_t POLL_MS = 100;       // matches the 10 Hz output rate
 static constexpr uint32_t POLL_IDLE_MS = 1000; // while the screen is off
+static constexpr uint32_t RETRY_MS = 5000;     // between attempts to find a missing chip
 static constexpr uint32_t SAVE_DELAY_MS = 60 * 1000; // save calibration once it has settled
 
 static const char *const PREFS_NAMESPACE = "qmc5883l";
@@ -65,13 +70,12 @@ QMC5883LHeading *qmc5883lHeading = nullptr;
 
 QMC5883LHeading::QMC5883LHeading(TwoWire &bus) : concurrency::OSThread("QMC5883L"), bus(bus)
 {
+    loadCalibration();
     present = begin();
     if (!present) {
-        LOG_WARN("QMC5883L compass not responding at 0x%02x", QMC5883L_ADDR);
-        disable();
+        LOG_WARN("QMC5883L compass not responding at 0x%02x, will keep trying", QMC5883L_ADDR);
         return;
     }
-    loadCalibration();
     LOG_INFO("QMC5883L compass ready (%s)", calibrated() ? "calibration loaded" : "rotate the device once to calibrate");
 }
 
@@ -91,6 +95,19 @@ bool QMC5883LHeading::begin()
     writeRegister(bus, REG_SET_RESET, 0x01);
     running = false;
     setRunning(true);
+#ifdef QMC5883L_DEBUG
+    // Register dump, to tell chip variants apart (a genuine QMC5883L reads 0xFF at 0x0D)
+    delay(150);
+    bus.beginTransmission(QMC5883L_ADDR);
+    bus.write((uint8_t)0x00);
+    if (bus.endTransmission() == 0 && bus.requestFrom((uint8_t)QMC5883L_ADDR, (uint8_t)14) == 14) {
+        uint8_t r[14];
+        for (uint8_t &b : r)
+            b = bus.read();
+        LOG_DEBUG("QMC5883L regs 00-0D: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x", r[0], r[1], r[2],
+                  r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10], r[11], r[12], r[13]);
+    }
+#endif
     return true;
 }
 
@@ -195,6 +212,23 @@ bool QMC5883LHeading::gpsCourseUsable(uint32_t now, float &courseDeg)
 #endif
 }
 
+// For variants that set COMPASS_GPS_COURSE_WITHOUT_MAG (e.g. a vehicle node): show the GPS
+// course even though the magnetometer has no usable heading. Once fed, the UI keeps the
+// last value while slow or stopped, i.e. the last direction of travel.
+void QMC5883LHeading::feedGpsCourseOnly(uint32_t now)
+{
+#if COMPASS_GPS_COURSE_WITHOUT_MAG && HAS_SCREEN
+    float course;
+    const bool useGps = gpsCourseUsable(now, course);
+    if (useGps != usingGpsCourse) {
+        usingGpsCourse = useGps;
+        LOG_INFO("Compass heading source: %s", useGps ? "GPS course" : "none (holding last GPS course)");
+    }
+    if (useGps && screen)
+        screen->setHeading(course);
+#endif
+}
+
 int32_t QMC5883LHeading::runOnce()
 {
 #if HAS_SCREEN
@@ -204,13 +238,22 @@ int32_t QMC5883LHeading::runOnce()
         return POLL_IDLE_MS;
     }
 #endif
+    const uint32_t now = millis();
+    if (!present) {
+        // e.g. the chip shares a switched supply that was off at boot
+        present = begin();
+        if (!present) {
+            feedGpsCourseOnly(now);
+            return RETRY_MS;
+        }
+        LOG_INFO("QMC5883L compass now responding");
+    }
     setRunning(true);
 
     int16_t x, y, z;
     if (!readRaw(x, y, z))
         return POLL_MS;
 
-    const uint32_t now = millis();
     if (!haveBounds) {
         xMin = xMax = x;
         yMin = yMax = y;
@@ -231,8 +274,12 @@ int32_t QMC5883LHeading::runOnce()
         LOG_DEBUG("QMC5883L raw x=%d y=%d z=%d bounds x %d..%d y %d..%d", x, y, z, xMin, xMax, yMin, yMax);
     }
 #endif
-    if (!calibrated())
-        return POLL_MS; // no heading yet; the UI keeps using its GPS-based estimate
+    if (!calibrated()) {
+        // No magnetometer heading yet. Unless the variant opts in to GPS course on its own,
+        // stay silent so the UI keeps using its GPS position-based estimate.
+        feedGpsCourseOnly(now);
+        return POLL_MS;
+    }
 
     // Remove the hard-iron offset and normalise each axis to its observed range
     const float fx = (x - (xMax + xMin) / 2.0f) / (float)(xMax - xMin);
