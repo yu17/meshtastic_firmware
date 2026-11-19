@@ -31,6 +31,10 @@
 // disturbs the magnetic field, and its direction of travel is what matters there. Two
 // thresholds so the source does not flap around one value. Below walking/jogging pace GPS
 // course is too noisy to use, so the lower limit should stay above that.
+// SET/RESET period register; the datasheet says to write 0x01
+#ifndef QMC5883L_SET_RESET_VALUE
+#define QMC5883L_SET_RESET_VALUE 0x01
+#endif
 #ifndef COMPASS_GPS_ENTER_KMH
 #define COMPASS_GPS_ENTER_KMH 11 // about 3 m/s
 #endif
@@ -92,7 +96,7 @@ bool QMC5883LHeading::begin()
     if (!writeRegister(bus, REG_CONTROL2, 0x80)) // soft reset; also proves the chip answers
         return false;
     delay(10);
-    writeRegister(bus, REG_SET_RESET, 0x01);
+    writeRegister(bus, REG_SET_RESET, QMC5883L_SET_RESET_VALUE);
     running = false;
     setRunning(true);
 #ifdef QMC5883L_DEBUG
@@ -269,7 +273,7 @@ int32_t QMC5883LHeading::runOnce()
     }
 #ifdef QMC5883L_DEBUG
     static uint32_t lastLog = 0;
-    if (now - lastLog > 1000) {
+    if (now - lastLog > 250) {
         lastLog = now;
         LOG_DEBUG("QMC5883L raw x=%d y=%d z=%d bounds x %d..%d y %d..%d", x, y, z, xMin, xMax, yMin, yMax);
     }
