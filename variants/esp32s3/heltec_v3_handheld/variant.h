@@ -60,3 +60,8 @@
 #define JOYSTICK_PIN_LR 4  // ADC1_CH3; low reading = left
 #define JOYSTICK_PIN_BTN 3 // push button to ground
 // #define JOYSTICK_DEBUG  // log raw readings twice a second, for calibration
+
+// QMC5883L compass (driver: QMC5883LCompass.cpp in this folder), on the secondary I2C bus.
+// #define QMC5883L_HEADING_OFFSET_DEG 90.0f // mounting offset; default matches the old firmware
+// #define QMC5883L_HEADING_REVERSED 1       // if the heading turns the wrong way
+// #define QMC5883L_DEBUG                    // log raw readings once a second

@@ -3,6 +3,7 @@
 // has been initialised.
 
 #include "AnalogJoystick.h"
+#include "QMC5883LCompass.h"
 #include "input/ButtonThread.h"
 
 extern ButtonThread *UserButtonThread;
@@ -23,6 +24,10 @@ void lateInitVariant()
 {
     if (!analogJoystick)
         analogJoystick = new AnalogJoystick();
+
+    // The compass shares the secondary I2C bus (GPIO 33/34) with the BMP280
+    if (!qmc5883lCompass)
+        qmc5883lCompass = new QMC5883LCompass(Wire1);
 
     if (UserButtonThread && inputBroker)
         UserButtonThread->userButton.attachClick(userButtonClick, nullptr);
