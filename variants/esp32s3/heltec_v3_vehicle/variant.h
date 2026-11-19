@@ -54,8 +54,9 @@
 #define PIN_GPS_EN 36 // Vext
 #define GPS_EN_ACTIVE 0
 
-// QMC5883L compass (driver: ../heltec_v3_fishy_common/QMC5883LHeading.cpp), on the secondary I2C bus.
-#define COMPASS_GPS_COURSE_WITHOUT_MAG 1 // vehicle: use GPS course even without a magnetometer heading
-// #define QMC5883L_HEADING_OFFSET_DEG 90.0f // mounting offset
-// #define QMC5883L_HEADING_REVERSED 1       // if the heading turns the wrong way
-// #define QMC5883L_DEBUG                    // log raw readings once a second
+// Compass (driver: ../heltec_v3_fishy_common/QMC5883LHeading.cpp).
+// The QMC5883L inside this MG-902 answers on the bus but cannot measure a steady field:
+// with the datasheet SET/RESET setting it reports only changes, and with that step
+// disabled it reports a constant that does not follow rotation (tested 2026-11-19).
+// So the magnetometer is left unused and the compass shows GPS course when moving.
+#define QMC5883L_MAG_ENABLED 0

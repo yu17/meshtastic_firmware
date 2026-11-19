@@ -46,6 +46,15 @@
 // intervals the receiver sleeps between fixes and the magnetometer is the better source.
 // A fix counts as fresh for one interval plus this margin, so the source does not flip
 // back to the magnetometer between two consecutive fixes.
+// Set to 0 in variant.h for a board whose magnetometer is unusable: the chip is then left
+// alone and only GPS course is shown (implies COMPASS_GPS_COURSE_WITHOUT_MAG).
+#ifndef QMC5883L_MAG_ENABLED
+#define QMC5883L_MAG_ENABLED 1
+#endif
+#if !QMC5883L_MAG_ENABLED
+#undef COMPASS_GPS_COURSE_WITHOUT_MAG
+#define COMPASS_GPS_COURSE_WITHOUT_MAG 1
+#endif
 // Set to 1 in variant.h to show GPS course even when the magnetometer gives no heading
 #ifndef COMPASS_GPS_COURSE_WITHOUT_MAG
 #define COMPASS_GPS_COURSE_WITHOUT_MAG 0
@@ -74,6 +83,11 @@ QMC5883LHeading *qmc5883lHeading = nullptr;
 
 QMC5883LHeading::QMC5883LHeading(TwoWire &bus) : concurrency::OSThread("QMC5883L"), bus(bus)
 {
+#if !QMC5883L_MAG_ENABLED
+    resetCalibration(); // drop anything stored by an earlier build
+    LOG_INFO("Compass: magnetometer disabled for this board, GPS course only");
+    return;
+#endif
     loadCalibration();
     present = begin();
     if (!present) {
@@ -243,6 +257,10 @@ int32_t QMC5883LHeading::runOnce()
     }
 #endif
     const uint32_t now = millis();
+#if !QMC5883L_MAG_ENABLED
+    feedGpsCourseOnly(now);
+    return POLL_IDLE_MS;
+#endif
     if (!present) {
         // e.g. the chip shares a switched supply that was off at boot
         present = begin();
