@@ -54,3 +54,10 @@
 // compass are NOT powered from Vext, and remove VEXT_ENABLE above at the same time.
 // #define PIN_GPS_EN Vext
 // #define GPS_EN_ACTIVE 0
+
+// Analog joystick (driver: AnalogJoystick.cpp in this folder). Same pins and thresholds
+// as the old rocket-ctrl-handheld firmware.
+#define JOYSTICK_PIN_UD 2  // ADC1_CH1; low reading = up
+#define JOYSTICK_PIN_LR 4  // ADC1_CH3; low reading = left
+#define JOYSTICK_PIN_BTN 3 // push button to ground
+// #define JOYSTICK_DEBUG  // log raw readings twice a second, for calibration
