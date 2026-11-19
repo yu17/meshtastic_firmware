@@ -7,8 +7,8 @@
 #define I2C_SCL SCL_OLED
 
 // Enable secondary bus for external periherals
-#define I2C_SDA1 33 // vehicle node: QMC5883L (0x0D) inside the GPS module
-#define I2C_SCL1 34
+#define I2C_SDA1 SDA
+#define I2C_SCL1 SCL
 
 // VEXT_ENABLE is deliberately not defined: on this node the Vext rail (GPIO 36, active low)
 // feeds only the GPS module, so it is handed to the GPS code as its power switch below.
@@ -54,9 +54,6 @@
 #define PIN_GPS_EN 36 // Vext
 #define GPS_EN_ACTIVE 0
 
-// Compass (driver: ../heltec_v3_fishy_common/QMC5883LHeading.cpp).
-// The QMC5883L inside this MG-902 answers on the bus but cannot measure a steady field:
-// with the datasheet SET/RESET setting it reports only changes, and with that step
-// disabled it reports a constant that does not follow rotation (tested 2026-11-19).
-// So the magnetometer is left unused and the compass shows GPS course when moving.
-#define QMC5883L_MAG_ENABLED 0
+// The MG-902 also contains a QMC5883L compass, wired to GPIO 33 (SDA) / 34 (SCL). It is
+// not used: on this module it cannot measure a steady field (tested 2026-11-19), so this
+// build has no compass driver and the secondary I2C bus keeps its stock pins.
