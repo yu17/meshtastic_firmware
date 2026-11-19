@@ -1,5 +1,7 @@
 #include "QMC5883LCompass.h"
 
+#include "Default.h"
+#include "GPS.h"
 #include "GPSStatus.h"
 #include "NodeDB.h"
 #include "main.h"
@@ -35,10 +37,13 @@
 #ifndef COMPASS_GPS_EXIT_KMH
 #define COMPASS_GPS_EXIT_KMH 7 // about 2 m/s
 #endif
-// GPS course is only used while fixes are this fresh. With a long gps_update_interval the
-// receiver sleeps between fixes, and the magnetometer is then the better source.
-#ifndef COMPASS_GPS_MAX_AGE_MS
-#define COMPASS_GPS_MAX_AGE_MS 5000
+// GPS course is only used when the receiver is kept always on, which the firmware does
+// for gps_update_interval <= 10 s; it then publishes one fix per interval. With longer
+// intervals the receiver sleeps between fixes and the magnetometer is the better source.
+// A fix counts as fresh for one interval plus this margin, so the source does not flip
+// back to the magnetometer between two consecutive fixes.
+#ifndef COMPASS_GPS_AGE_MARGIN_MS
+#define COMPASS_GPS_AGE_MARGIN_MS 4000
 #endif
 
 static constexpr uint8_t REG_DATA = 0x00;      // X LSB, X MSB, Y LSB, Y MSB, Z LSB, Z MSB
@@ -174,8 +179,11 @@ bool QMC5883LCompass::gpsCourseUsable(uint32_t now, float &courseDeg)
 #if HAS_GPS && !MESHTASTIC_EXCLUDE_GPS
     if (!gpsStatus || !gpsStatus->getHasLock())
         return false;
+    const uint32_t intervalMs = Default::getConfiguredOrDefaultMs(config.position.gps_update_interval);
+    if (intervalMs > GPS_UPDATE_ALWAYS_ON_THRESHOLD_MS)
+        return false; // receiver sleeps between fixes; course would be stale most of the time
     const uint32_t lastFix = gpsStatus->getLastFixMillis();
-    if (lastFix == 0 || now - lastFix > COMPASS_GPS_MAX_AGE_MS)
+    if (lastFix == 0 || now - lastFix > intervalMs + COMPASS_GPS_AGE_MARGIN_MS)
         return false;
     const uint32_t speedKmh = localPosition.ground_speed; // km/h, as filled in by the GPS driver
     if (speedKmh < (usingGpsCourse ? COMPASS_GPS_EXIT_KMH : COMPASS_GPS_ENTER_KMH))
