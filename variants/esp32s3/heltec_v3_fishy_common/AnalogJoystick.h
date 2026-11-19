@@ -6,6 +6,8 @@
 
 #include "configuration.h"
 
+#ifdef JOYSTICK_PIN_UD // only for variants that have the joystick
+
 #include "concurrency/OSThread.h"
 #include "input/InputBroker.h"
 
@@ -38,3 +40,5 @@ class AnalogJoystick : public Observable<const InputEvent *>, public concurrency
 };
 
 extern AnalogJoystick *analogJoystick;
+
+#endif // JOYSTICK_PIN_UD

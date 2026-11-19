@@ -54,14 +54,14 @@
 #define PIN_GPS_EN 36 // Vext
 #define GPS_EN_ACTIVE 0
 
-// Analog joystick (driver: AnalogJoystick.cpp in this folder). Same pins and thresholds
+// Analog joystick (driver: ../heltec_v3_fishy_common/AnalogJoystick.cpp). Same pins and thresholds
 // as the old rocket-ctrl-handheld firmware.
 #define JOYSTICK_PIN_UD 2  // ADC1_CH1; low reading = up
 #define JOYSTICK_PIN_LR 4  // ADC1_CH3; low reading = left
 #define JOYSTICK_PIN_BTN 3 // push button to ground
 // #define JOYSTICK_DEBUG  // log raw readings twice a second, for calibration
 
-// QMC5883L compass (driver: QMC5883LCompass.cpp in this folder), on the secondary I2C bus.
+// QMC5883L compass (driver: ../heltec_v3_fishy_common/QMC5883LHeading.cpp), on the secondary I2C bus.
 // #define QMC5883L_HEADING_OFFSET_DEG 90.0f // mounting offset; default matches the old firmware
 // #define QMC5883L_HEADING_REVERSED 1       // if the heading turns the wrong way
 // #define COMPASS_GPS_ENTER_KMH 11        // switch to GPS course above this speed...

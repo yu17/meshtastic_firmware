@@ -1,6 +1,7 @@
 #pragma once
 
 // QMC5883L magnetometer as a heading source for the on-screen compass.
+// (Named "Heading" because the upstream lib_deps already ship an unused QMC5883LCompass.h.)
 // Upstream detects this chip but never reads it. This driver lives in the variant folder,
 // is created from lateInitVariant(), and feeds headings through Screen::setHeading(), the
 // same call the upstream magnetometer drivers use. No upstream source file changes.
@@ -12,10 +13,10 @@
 #include "concurrency/OSThread.h"
 #include <Wire.h>
 
-class QMC5883LCompass : public concurrency::OSThread
+class QMC5883LHeading : public concurrency::OSThread
 {
   public:
-    explicit QMC5883LCompass(TwoWire &bus);
+    explicit QMC5883LHeading(TwoWire &bus);
 
     // Forget the stored calibration and start learning it again
     void resetCalibration();
@@ -44,4 +45,4 @@ class QMC5883LCompass : public concurrency::OSThread
     uint32_t boundsChangedMs = 0;
 };
 
-extern QMC5883LCompass *qmc5883lCompass;
+extern QMC5883LHeading *qmc5883lHeading;

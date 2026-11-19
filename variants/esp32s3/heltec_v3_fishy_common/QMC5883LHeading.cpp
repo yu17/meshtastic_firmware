@@ -1,4 +1,4 @@
-#include "QMC5883LCompass.h"
+#include "QMC5883LHeading.h"
 
 #include "Default.h"
 #include "GPS.h"
@@ -61,9 +61,9 @@ static constexpr uint32_t SAVE_DELAY_MS = 60 * 1000; // save calibration once it
 
 static const char *const PREFS_NAMESPACE = "qmc5883l";
 
-QMC5883LCompass *qmc5883lCompass = nullptr;
+QMC5883LHeading *qmc5883lHeading = nullptr;
 
-QMC5883LCompass::QMC5883LCompass(TwoWire &bus) : concurrency::OSThread("QMC5883L"), bus(bus)
+QMC5883LHeading::QMC5883LHeading(TwoWire &bus) : concurrency::OSThread("QMC5883L"), bus(bus)
 {
     present = begin();
     if (!present) {
@@ -83,7 +83,7 @@ static bool writeRegister(TwoWire &bus, uint8_t reg, uint8_t value)
     return bus.endTransmission() == 0;
 }
 
-bool QMC5883LCompass::begin()
+bool QMC5883LHeading::begin()
 {
     if (!writeRegister(bus, REG_CONTROL2, 0x80)) // soft reset; also proves the chip answers
         return false;
@@ -94,7 +94,7 @@ bool QMC5883LCompass::begin()
     return true;
 }
 
-void QMC5883LCompass::setRunning(bool run)
+void QMC5883LHeading::setRunning(bool run)
 {
     if (run == running)
         return;
@@ -102,7 +102,7 @@ void QMC5883LCompass::setRunning(bool run)
         running = run;
 }
 
-bool QMC5883LCompass::readRaw(int16_t &x, int16_t &y, int16_t &z)
+bool QMC5883LHeading::readRaw(int16_t &x, int16_t &y, int16_t &z)
 {
     bus.beginTransmission(QMC5883L_ADDR);
     bus.write(REG_STATUS);
@@ -124,12 +124,12 @@ bool QMC5883LCompass::readRaw(int16_t &x, int16_t &y, int16_t &z)
     return true;
 }
 
-bool QMC5883LCompass::calibrated() const
+bool QMC5883LHeading::calibrated() const
 {
     return haveBounds && (xMax - xMin) >= QMC5883L_MIN_SPAN && (yMax - yMin) >= QMC5883L_MIN_SPAN;
 }
 
-void QMC5883LCompass::loadCalibration()
+void QMC5883LHeading::loadCalibration()
 {
     Preferences prefs;
     if (!prefs.begin(PREFS_NAMESPACE, true))
@@ -144,7 +144,7 @@ void QMC5883LCompass::loadCalibration()
     prefs.end();
 }
 
-void QMC5883LCompass::saveCalibrationIfDue(uint32_t now)
+void QMC5883LHeading::saveCalibrationIfDue(uint32_t now)
 {
     // Write only once the bounds have stopped growing for a while, to spare the flash
     if (!boundsDirty || !calibrated() || now - boundsChangedMs < SAVE_DELAY_MS)
@@ -161,7 +161,7 @@ void QMC5883LCompass::saveCalibrationIfDue(uint32_t now)
     boundsDirty = false;
 }
 
-void QMC5883LCompass::resetCalibration()
+void QMC5883LHeading::resetCalibration()
 {
     haveBounds = false;
     boundsDirty = false;
@@ -174,7 +174,7 @@ void QMC5883LCompass::resetCalibration()
 }
 
 // True when the GPS course should be shown instead of the magnetometer heading
-bool QMC5883LCompass::gpsCourseUsable(uint32_t now, float &courseDeg)
+bool QMC5883LHeading::gpsCourseUsable(uint32_t now, float &courseDeg)
 {
 #if HAS_GPS && !MESHTASTIC_EXCLUDE_GPS
     if (!gpsStatus || !gpsStatus->getHasLock())
@@ -195,7 +195,7 @@ bool QMC5883LCompass::gpsCourseUsable(uint32_t now, float &courseDeg)
 #endif
 }
 
-int32_t QMC5883LCompass::runOnce()
+int32_t QMC5883LHeading::runOnce()
 {
 #if HAS_SCREEN
     // Nothing shows a heading while the screen is off, so let the chip sleep too

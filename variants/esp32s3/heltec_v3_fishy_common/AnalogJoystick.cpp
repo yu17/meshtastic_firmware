@@ -1,5 +1,7 @@
 #include "AnalogJoystick.h"
 
+#ifdef JOYSTICK_PIN_UD
+
 #include "main.h"
 #if HAS_SCREEN
 #include "graphics/Screen.h"
@@ -148,3 +150,5 @@ int32_t AnalogJoystick::runOnce()
 #endif
     return POLL_MS;
 }
+
+#endif // JOYSTICK_PIN_UD
