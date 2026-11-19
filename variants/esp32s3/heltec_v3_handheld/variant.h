@@ -64,4 +64,6 @@
 // QMC5883L compass (driver: QMC5883LCompass.cpp in this folder), on the secondary I2C bus.
 // #define QMC5883L_HEADING_OFFSET_DEG 90.0f // mounting offset; default matches the old firmware
 // #define QMC5883L_HEADING_REVERSED 1       // if the heading turns the wrong way
+// #define COMPASS_GPS_ENTER_KMH 11        // switch to GPS course above this speed...
+// #define COMPASS_GPS_EXIT_KMH 7          // ...and back to the magnetometer below this
 // #define QMC5883L_DEBUG                    // log raw readings once a second

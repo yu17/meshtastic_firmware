@@ -4,6 +4,8 @@
 // Upstream detects this chip but never reads it. This driver lives in the variant folder,
 // is created from lateInitVariant(), and feeds headings through Screen::setHeading(), the
 // same call the upstream magnetometer drivers use. No upstream source file changes.
+// When moving faster than a threshold with fresh GPS fixes, it passes on the GPS course
+// instead (upstream has no such switching: with a magnetometer it never uses GPS).
 
 #include "configuration.h"
 
@@ -28,10 +30,12 @@ class QMC5883LCompass : public concurrency::OSThread
     void loadCalibration();
     void saveCalibrationIfDue(uint32_t now);
     bool calibrated() const;
+    bool gpsCourseUsable(uint32_t now, float &courseDeg);
 
     TwoWire &bus;
     bool present = false;
     bool running = false;
+    bool usingGpsCourse = false; // heading currently comes from GPS course, not the magnetometer
 
     // Hard-iron calibration: running min/max of the two horizontal axes
     int16_t xMin = 0, xMax = 0, yMin = 0, yMax = 0;

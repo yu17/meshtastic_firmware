@@ -1,5 +1,6 @@
 #include "QMC5883LCompass.h"
 
+#include "GPSStatus.h"
 #include "NodeDB.h"
 #include "main.h"
 #include <Preferences.h>
@@ -22,6 +23,22 @@
 // over a full turn, so this is reached only by actually rotating the device.
 #ifndef QMC5883L_MIN_SPAN
 #define QMC5883L_MIN_SPAN 2000
+#endif
+
+// Above this ground speed the GPS course replaces the magnetometer: a moving vehicle
+// disturbs the magnetic field, and its direction of travel is what matters there. Two
+// thresholds so the source does not flap around one value. Below walking/jogging pace GPS
+// course is too noisy to use, so the lower limit should stay above that.
+#ifndef COMPASS_GPS_ENTER_KMH
+#define COMPASS_GPS_ENTER_KMH 11 // about 3 m/s
+#endif
+#ifndef COMPASS_GPS_EXIT_KMH
+#define COMPASS_GPS_EXIT_KMH 7 // about 2 m/s
+#endif
+// GPS course is only used while fixes are this fresh. With a long gps_update_interval the
+// receiver sleeps between fixes, and the magnetometer is then the better source.
+#ifndef COMPASS_GPS_MAX_AGE_MS
+#define COMPASS_GPS_MAX_AGE_MS 5000
 #endif
 
 static constexpr uint8_t REG_DATA = 0x00;      // X LSB, X MSB, Y LSB, Y MSB, Z LSB, Z MSB
@@ -151,6 +168,25 @@ void QMC5883LCompass::resetCalibration()
     LOG_INFO("QMC5883L calibration cleared");
 }
 
+// True when the GPS course should be shown instead of the magnetometer heading
+bool QMC5883LCompass::gpsCourseUsable(uint32_t now, float &courseDeg)
+{
+#if HAS_GPS && !MESHTASTIC_EXCLUDE_GPS
+    if (!gpsStatus || !gpsStatus->getHasLock())
+        return false;
+    const uint32_t lastFix = gpsStatus->getLastFixMillis();
+    if (lastFix == 0 || now - lastFix > COMPASS_GPS_MAX_AGE_MS)
+        return false;
+    const uint32_t speedKmh = localPosition.ground_speed; // km/h, as filled in by the GPS driver
+    if (speedKmh < (usingGpsCourse ? COMPASS_GPS_EXIT_KMH : COMPASS_GPS_ENTER_KMH))
+        return false;
+    courseDeg = gpsStatus->getHeading() * 1e-5f; // ground track, degrees clockwise from north
+    return true;
+#else
+    return false;
+#endif
+}
+
 int32_t QMC5883LCompass::runOnce()
 {
 #if HAS_SCREEN
@@ -216,6 +252,16 @@ int32_t QMC5883LCompass::runOnce()
     default:
         break;
     }
+
+    // Moving fast with fresh fixes: show the direction of travel instead
+    float course;
+    const bool useGps = gpsCourseUsable(now, course);
+    if (useGps != usingGpsCourse) {
+        usingGpsCourse = useGps;
+        LOG_INFO("Compass heading source: %s", useGps ? "GPS course" : "magnetometer");
+    }
+    if (useGps)
+        heading = course;
 
 #if HAS_SCREEN
     if (screen)
